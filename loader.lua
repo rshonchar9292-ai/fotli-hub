@@ -1,6 +1,6 @@
 --// ============================================================
---// loader.lua — Fotli Hub Loader
---// Завантажує: ui.lua + features/*.lua
+--// LOADER для Fotli Hub
+--// Структура: ui.lua + features/*.lua
 --// ============================================================
 
 if _G.FotliMenuLoaded then
@@ -9,10 +9,10 @@ if _G.FotliMenuLoaded then
 end
 _G.FotliMenuLoaded = true
 
---// Базовий URL (УВАГА: юзернейм 9292, не 9232!)
+--// УВАГА: правильний юзернейм — 9292 (не 9232!)
 local BASE = "https://raw.githubusercontent.com/rshonchar9292-ai/fotli-hub/main/"
 
---// Універсальне завантаження модуля
+--// Універсальне завантаження
 local function Load(path)
     local url = BASE .. path
     local ok, code = pcall(function()
@@ -29,7 +29,7 @@ local function Load(path)
         return false
     end
 
-    -- Перевірка на 404 (GitHub віддає "404: Not Found")
+    --// Перевірка на 404
     if code:sub(1, 3) == "404" or code:find("^404:") then
         warn("[FotliMenu] Файл не знайдено (" .. path .. ")")
         return false
@@ -72,9 +72,8 @@ print("[FotliMenu] UI готовий, завантаження модулів...
 --// 3. Завантажуємо модулі логіки
 Load("features/esp.lua")
 Load("features/silentaim.lua")
-Load("features/aimfov.lua")
 Load("features/speed.lua")
 Load("features/fly.lua")
 Load("features/noclip.lua")
 
-print("[FotliMenu] Готово! Меню запущено.")
+print("[FotliMenu] Готово!")
