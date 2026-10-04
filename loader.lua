@@ -1,54 +1,55 @@
 --// ============================================================
 --// LOADER для Fotli Hub
---// Завантажує UI з GitHub репозиторію
+--// Структура: ui.lua + features/*.lua
 --// ============================================================
 
--- Захист від повторного завантаження
 if _G.FotliMenuLoaded then
     warn("[FotliMenu] Вже завантажено!")
     return
 end
 _G.FotliMenuLoaded = true
 
--- URL файлу з UI
-local UI_URL = "https://raw.githubusercontent.com/rshonchar9232-ai/fotli-hub/main/ui.lua"
+local BASE = "https://raw.githubusercontent.com/rshonchar9232-ai/fotli-hub/main/"
 
--- Функція завантаження з перевіркою
-local function LoadUI()
-    local success, result = pcall(function()
-        return game:HttpGet(UI_URL)
-    end)
-
-    if not success then
-        warn("[FotliMenu] Помилка HTTP-запиту:", result)
+-- Універсальне завантаження
+local function Load(path)
+    local url = BASE .. path
+    local ok, code = pcall(game.HttpGet, game, url)
+    if not ok or not code or #code < 20 then
+        warn("[FotliMenu] Не завантажено:", path)
         return false
     end
 
-    if not result or #result < 50 then
-        warn("[FotliMenu] Порожня або занадто коротка відповідь від GitHub")
-        return false
-    end
-
-    -- Компіляція Lua-коду
-    local fn, err = loadstring(result)
+    local fn, err = loadstring(code)
     if not fn then
-        warn("[FotliMenu] Помилка компіляції:", err)
+        warn("[FotliMenu] Помилка компіляції", path .. ":", err)
         return false
     end
 
-    -- Запуск
-    local runSuccess, runErr = pcall(fn)
-    if not runSuccess then
-        warn("[FotliMenu] Помилка виконання:", runErr)
+    local runOk, runErr = pcall(fn)
+    if not runOk then
+        warn("[FotliMenu] Помилка виконання", path .. ":", runErr)
         return false
     end
 
+    print("[FotliMenu] ✓", path)
     return true
 end
 
--- Запуск
-if LoadUI() then
-    print("[FotliMenu] UI успішно завантажено через Fotli Hub!")
-else
-    warn("[FotliMenu] Не вдалося завантажити UI.")
+-- 1. UI
+Load("ui.lua")
+task.wait(0.3)
+
+if not _G.ModMenu or not _G.ModMenu.Elements then
+    warn("[FotliMenu] UI не завантажився")
+    return
 end
+
+-- 2. Features (логіка)
+Load("features/esp.lua")
+Load("features/silentaim.lua")
+Load("features/speed.lua")
+Load("features/fly.lua")
+Load("features/noclip.lua")
+
+print("[FotliMenu] Готово!")
