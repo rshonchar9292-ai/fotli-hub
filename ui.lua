@@ -1,6 +1,5 @@
 --// ============================================================
---// MOD MENU UI - Частина 1 (КРАСИВА ВЕРСІЯ з анімаціями)
---// Для Fotli Hub / HitHub / Xeno / Delta
+--// ui.lua — Fotli Hub UI (повна версія з анімаціями)
 --// ============================================================
 
 -- Захист від повторного завантаження
@@ -8,31 +7,29 @@ if game:GetService("CoreGui"):FindFirstChild("ModMenuUI") then
     game:GetService("CoreGui"):FindFirstChild("ModMenuUI"):Destroy()
 end
 
-local Players           = game:GetService("Players")
-local UserInputService  = game:GetService("UserInputService")
-local RunService        = game:GetService("RunService")
-local TweenService      = game:GetService("TweenService")
-local LocalPlayer       = Players.LocalPlayer
+local Players          = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService       = game:GetService("RunService")
+local TweenService     = game:GetService("TweenService")
+local LocalPlayer      = Players.LocalPlayer
 
---// Палітра кольорів (кіберпанк/неон)
+--// Палітра
 local COLORS = {
-    Background      = Color3.fromRGB(15, 15, 22),
-    BackgroundAlt   = Color3.fromRGB(22, 22, 32),
-    Element         = Color3.fromRGB(30, 30, 42),
-    ElementHover    = Color3.fromRGB(40, 40, 55),
-    Stroke          = Color3.fromRGB(60, 60, 85),
-    StrokeGlow      = Color3.fromRGB(120, 90, 255),
-    Accent          = Color3.fromRGB(120, 90, 255),   -- фіолетовий
-    Accent2         = Color3.fromRGB(80, 200, 255),   -- блакитний
-    AccentActive    = Color3.fromRGB(140, 110, 255),
-    Text            = Color3.fromRGB(230, 230, 245),
-    TextDim         = Color3.fromRGB(150, 150, 170),
-    Success         = Color3.fromRGB(80, 220, 140),
-    Danger          = Color3.fromRGB(240, 80, 100),
+    Background    = Color3.fromRGB(15, 15, 22),
+    BackgroundAlt = Color3.fromRGB(22, 22, 32),
+    Element       = Color3.fromRGB(30, 30, 42),
+    ElementHover  = Color3.fromRGB(40, 40, 55),
+    Stroke        = Color3.fromRGB(60, 60, 85),
+    Accent        = Color3.fromRGB(120, 90, 255),
+    Accent2       = Color3.fromRGB(80, 200, 255),
+    Text          = Color3.fromRGB(230, 230, 245),
+    TextDim       = Color3.fromRGB(150, 150, 170),
+    Success       = Color3.fromRGB(80, 220, 140),
+    Danger        = Color3.fromRGB(240, 80, 100),
 }
 
 --// ------------------------------------------------------------
---// 1. ScreenGui
+--// ScreenGui
 --// ------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuUI"
@@ -43,7 +40,7 @@ ScreenGui.DisplayOrder = 999
 ScreenGui.Parent = game:GetService("CoreGui")
 
 --// ------------------------------------------------------------
---// 2. Головне вікно (Main Frame)
+--// Main Frame
 --// ------------------------------------------------------------
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
@@ -65,27 +62,12 @@ MainStroke.Thickness = 1.5
 MainStroke.Transparency = 0.2
 MainStroke.Parent = MainFrame
 
--- Тінь під вікном
-local Shadow = Instance.new("ImageLabel")
-Shadow.Name = "Shadow"
-Shadow.Size = UDim2.new(1, 40, 1, 40)
-Shadow.Position = UDim2.new(0, -20, 0, -20)
-Shadow.BackgroundTransparency = 1
-Shadow.Image = "rbxassetid://5028857084"
-Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-Shadow.ImageTransparency = 0.4
-Shadow.ScaleType = Enum.ScaleType.Slice
-Shadow.SliceCenter = Rect.new(24, 24, 276, 276)
-Shadow.ZIndex = -1
-Shadow.Parent = MainFrame
-
 --// ------------------------------------------------------------
---// 3. Верхня панель (TitleBar) з градієнтом
+--// TitleBar
 --// ------------------------------------------------------------
 local TitleBar = Instance.new("Frame")
 TitleBar.Name = "TitleBar"
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.Position = UDim2.new(0, 0, 0, 0)
 TitleBar.BackgroundColor3 = COLORS.BackgroundAlt
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = MainFrame
@@ -102,7 +84,7 @@ TitleBarFix.BorderSizePixel = 0
 TitleBarFix.ZIndex = 2
 TitleBarFix.Parent = TitleBar
 
--- Анімований градієнт зверху
+-- Анімований градієнт
 local GradientHolder = Instance.new("Frame")
 GradientHolder.Size = UDim2.new(1, 0, 0, 2)
 GradientHolder.Position = UDim2.new(0, 0, 1, -2)
@@ -118,7 +100,6 @@ Gradient.Color = ColorSequence.new({
 })
 Gradient.Parent = GradientHolder
 
--- Анімація градієнта (переливання)
 task.spawn(function()
     local offset = 0
     while GradientHolder.Parent do
@@ -129,7 +110,7 @@ task.spawn(function()
     end
 end)
 
--- Логотип (крапка що світиться)
+-- Логотип-крапка
 local LogoDot = Instance.new("Frame")
 LogoDot.Size = UDim2.new(0, 8, 0, 8)
 LogoDot.Position = UDim2.new(0, 16, 0.5, -4)
@@ -148,7 +129,6 @@ LogoDotGlow.Thickness = 2
 LogoDotGlow.Transparency = 0.3
 LogoDotGlow.Parent = LogoDot
 
--- Пульсація логотипу
 task.spawn(function()
     while LogoDot.Parent do
         TweenService:Create(LogoDotGlow, TweenInfo.new(1, Enum.EasingStyle.Sine), {Transparency = 0.8}):Play()
@@ -158,7 +138,6 @@ task.spawn(function()
     end
 end)
 
--- Назва
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -120, 1, 0)
 TitleLabel.Position = UDim2.new(0, 32, 0, 0)
@@ -171,9 +150,8 @@ TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.ZIndex = 3
 TitleLabel.Parent = TitleBar
 
--- Кнопка згортання
+-- Minimize
 local MinimizeButton = Instance.new("TextButton")
-MinimizeButton.Name = "MinimizeButton"
 MinimizeButton.Size = UDim2.new(0, 26, 0, 26)
 MinimizeButton.Position = UDim2.new(1, -68, 0.5, -13)
 MinimizeButton.BackgroundColor3 = COLORS.Element
@@ -186,9 +164,9 @@ MinimizeButton.AutoButtonColor = false
 MinimizeButton.ZIndex = 3
 MinimizeButton.Parent = TitleBar
 
-local MinimizeCorner = Instance.new("UICorner")
-MinimizeCorner.CornerRadius = UDim.new(0, 8)
-MinimizeCorner.Parent = MinimizeButton
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 8)
+MinCorner.Parent = MinimizeButton
 
 MinimizeButton.MouseEnter:Connect(function()
     TweenService:Create(MinimizeButton, TweenInfo.new(0.15), {BackgroundColor3 = COLORS.ElementHover}):Play()
@@ -197,9 +175,8 @@ MinimizeButton.MouseLeave:Connect(function()
     TweenService:Create(MinimizeButton, TweenInfo.new(0.15), {BackgroundColor3 = COLORS.Element}):Play()
 end)
 
--- Кнопка закриття
+-- Close
 local CloseButton = Instance.new("TextButton")
-CloseButton.Name = "CloseButton"
 CloseButton.Size = UDim2.new(0, 26, 0, 26)
 CloseButton.Position = UDim2.new(1, -36, 0.5, -13)
 CloseButton.BackgroundColor3 = COLORS.Element
@@ -224,7 +201,7 @@ CloseButton.MouseLeave:Connect(function()
 end)
 
 --// ------------------------------------------------------------
---// 4. Ліва панель контенту (ScrollingFrame)
+--// Content Frame (ліва частина)
 --// ------------------------------------------------------------
 local ContentFrame = Instance.new("ScrollingFrame")
 ContentFrame.Name = "ContentFrame"
@@ -257,7 +234,7 @@ ContentLayout.Padding = UDim.new(0, 8)
 ContentLayout.Parent = ContentFrame
 
 --// ------------------------------------------------------------
---// 5. Права панель вкладок
+--// Tabs Frame (права частина)
 --// ------------------------------------------------------------
 local TabsFrame = Instance.new("Frame")
 TabsFrame.Name = "TabsFrame"
@@ -284,18 +261,17 @@ TabsLayout.Padding = UDim.new(0, 6)
 TabsLayout.Parent = TabsFrame
 
 --// ------------------------------------------------------------
---// 6. Сховище
+--// Сховище
 --// ------------------------------------------------------------
-local Tabs       = {}
-local TabPages   = {}
-local ActiveTab  = nil
+local Tabs      = {}
+local TabPages  = {}
+local ActiveTab = nil
 
 --// ------------------------------------------------------------
---// 7. Створення вкладки з анімацією
+--// CreateTab
 --// ------------------------------------------------------------
 local function CreateTab(name)
     local TabButton = Instance.new("TextButton")
-    TabButton.Name = name .. "Tab"
     TabButton.Size = UDim2.new(1, 0, 0, 34)
     TabButton.BackgroundColor3 = COLORS.Element
     TabButton.BorderSizePixel = 0
@@ -316,9 +292,7 @@ local function CreateTab(name)
     TabStroke.Transparency = 0.5
     TabStroke.Parent = TabButton
 
-    -- Акцентна смужка зліва (прихована за замовчуванням)
     local AccentBar = Instance.new("Frame")
-    AccentBar.Name = "AccentBar"
     AccentBar.Size = UDim2.new(0, 3, 0, 0)
     AccentBar.Position = UDim2.new(0, 0, 0.5, 0)
     AccentBar.BackgroundColor3 = COLORS.Accent
@@ -329,7 +303,6 @@ local function CreateTab(name)
     AccentBarCorner.CornerRadius = UDim.new(1, 0)
     AccentBarCorner.Parent = AccentBar
 
-    -- Сторінка контенту
     local Page = Instance.new("Frame")
     Page.Name = name .. "Page"
     Page.Size = UDim2.new(1, 0, 1, 0)
@@ -345,7 +318,6 @@ local function CreateTab(name)
     Tabs[name] = {Button = TabButton, AccentBar = AccentBar, Stroke = TabStroke}
     TabPages[name] = Page
 
-    -- Hover
     TabButton.MouseEnter:Connect(function()
         if ActiveTab ~= name then
             TweenService:Create(TabButton, TweenInfo.new(0.15), {BackgroundColor3 = COLORS.ElementHover}):Play()
@@ -357,10 +329,8 @@ local function CreateTab(name)
         end
     end)
 
-    -- Клік
     TabButton.MouseButton1Click:Connect(function()
         for tabName, data in pairs(Tabs) do
-            -- Анімоване згасання неактивних
             TweenService:Create(data.Button, TweenInfo.new(0.2), {
                 BackgroundColor3 = COLORS.Element,
                 TextColor3 = COLORS.TextDim,
@@ -373,7 +343,6 @@ local function CreateTab(name)
             TabPages[tabName].Visible = false
         end
 
-        -- Активна вкладка
         TweenService:Create(TabButton, TweenInfo.new(0.2), {
             BackgroundColor3 = COLORS.ElementHover,
             TextColor3 = COLORS.Text,
@@ -386,10 +355,9 @@ local function CreateTab(name)
             Transparency = 0,
         }):Play()
 
-        -- Плавна поява контенту
         Page.Visible = true
         for _, child in ipairs(Page:GetChildren()) do
-            if child:IsA("GuiObject") then
+            if child:IsA("GuiObject") and not child:IsA("UIListLayout") then
                 child.BackgroundTransparency = 1
                 TweenService:Create(child, TweenInfo.new(0.25), {BackgroundTransparency = 0}):Play()
             end
@@ -402,13 +370,12 @@ local function CreateTab(name)
 end
 
 --// ------------------------------------------------------------
---// 8. Toggle з анімацією
+--// CreateToggle
 --// ------------------------------------------------------------
 local function CreateToggle(parent, text, default, callback)
     local state = default or false
 
     local Holder = Instance.new("Frame")
-    Holder.Name = text .. "Toggle"
     Holder.Size = UDim2.new(1, 0, 0, 38)
     Holder.BackgroundColor3 = COLORS.Element
     Holder.BorderSizePixel = 0
@@ -435,7 +402,6 @@ local function CreateToggle(parent, text, default, callback)
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = Holder
 
-    -- Toggle
     local ToggleBtn = Instance.new("TextButton")
     ToggleBtn.Size = UDim2.new(0, 44, 0, 22)
     ToggleBtn.Position = UDim2.new(1, -56, 0.5, -11)
@@ -502,13 +468,12 @@ local function CreateToggle(parent, text, default, callback)
 end
 
 --// ------------------------------------------------------------
---// 9. Slider з анімацією
+--// CreateSlider
 --// ------------------------------------------------------------
 local function CreateSlider(parent, text, min, max, default, callback)
     local value = default or min
 
     local Holder = Instance.new("Frame")
-    Holder.Name = text .. "Slider"
     Holder.Size = UDim2.new(1, 0, 0, 54)
     Holder.BackgroundColor3 = COLORS.Element
     Holder.BorderSizePixel = 0
@@ -664,7 +629,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
 end
 
 --// ------------------------------------------------------------
---// 10. Section Label
+--// CreateSection
 --// ------------------------------------------------------------
 local function CreateSection(parent, text)
     local Label = Instance.new("TextLabel")
@@ -680,34 +645,45 @@ local function CreateSection(parent, text)
 end
 
 --// ------------------------------------------------------------
---// 11. Створення вкладок
+--// Створення вкладок
 --// ------------------------------------------------------------
 local CombatPage    = CreateTab("Combat")
 local VisualPage    = CreateTab("Visual")
 local MovementPage  = CreateTab("Movement")
 local AnimationPage = CreateTab("Animation")
 
---// Combat
+--// -------- Combat --------
 CreateSection(CombatPage, "Aim Assist")
-local SilentAimToggle = CreateToggle(CombatPage, "Silent Aim", false, function(s) print("[UI] Silent Aim:", s) end)
-local FovToggle       = CreateToggle(CombatPage, "Aim (FOV)",  false, function(s) print("[UI] Aim FOV:", s) end)
-local FovSlider       = CreateSlider(CombatPage, "FOV Radius", 10, 500, 100, function(v) print("[UI] FOV:", v) end)
 
---// Movement
+local SilentAimToggle = CreateToggle(CombatPage, "Silent Aim", false, nil)
+local FovToggle       = CreateToggle(CombatPage, "Aim (FOV)",  false, nil)
+local FovSlider       = CreateSlider(CombatPage, "FOV Radius", 10, 500, 100, nil)
+
+--// -------- Visual (ESP) --------
+CreateSection(VisualPage, "Player ESP")
+
+local EspEnabled   = CreateToggle(VisualPage, "Enable ESP",        false, nil)
+local EspFill      = CreateToggle(VisualPage, "Fill (Glow)",       true,  nil)
+local EspOutline   = CreateToggle(VisualPage, "Outline",           true,  nil)
+local EspSeeThru   = CreateToggle(VisualPage, "See Through Walls", true,  nil)
+local EspTeamCheck = CreateToggle(VisualPage, "Team Check",        true,  nil)
+
+CreateSection(VisualPage, "Settings")
+
+local EspMaxDist   = CreateSlider(VisualPage, "Max Distance", 50, 5000, 1500, nil)
+local EspFillAlpha = CreateSlider(VisualPage, "Fill Alpha",   0,  1,    0.35, nil)
+
+--// -------- Movement --------
 CreateSection(MovementPage, "Movement")
-local SpeedSlider  = CreateSlider(MovementPage, "Speed", 16, 500, 16, function(v) print("[UI] Speed:", v) end)
-local FlyToggle    = CreateToggle(MovementPage, "Fly",    false, function(s) print("[UI] Fly:", s) end)
-local NoclipToggle = CreateToggle(MovementPage, "Noclip", false, function(s) print("[UI] Noclip:", s) end)
 
---// Visual (порожня)
-CreateSection(VisualPage, "Visual")
+local SpeedSlider  = CreateSlider(MovementPage, "Speed", 16, 500, 16, nil)
+local FlyToggle    = CreateToggle(MovementPage, "Fly",    false, nil)
+local NoclipToggle = CreateToggle(MovementPage, "Noclip", false, nil)
 
---// Animation (порожня)
+--// -------- Animation --------
 CreateSection(AnimationPage, "Animation")
 
 --// Активуємо Combat за замовчуванням
-Tabs["Combat"].Button.MouseButton1Click:Fire()
--- Ручна активація (бо :Fire() не існує)
 for tabName, data in pairs(Tabs) do
     data.Button.BackgroundColor3 = COLORS.Element
     data.Button.TextColor3 = COLORS.TextDim
@@ -722,7 +698,7 @@ TabPages["Combat"].Visible = true
 ActiveTab = "Combat"
 
 --// ------------------------------------------------------------
---// 12. Drag-переміщення
+--// Drag
 --// ------------------------------------------------------------
 local dragging, dragStart, startPos = false, nil, nil
 
@@ -754,7 +730,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 --// ------------------------------------------------------------
---// 13. Згортання / розгортання
+--// Мінімізація
 --// ------------------------------------------------------------
 local minimized = false
 MinimizeButton.MouseButton1Click:Connect(function()
@@ -777,10 +753,9 @@ MinimizeButton.MouseButton1Click:Connect(function()
 end)
 
 --// ------------------------------------------------------------
---// 14. Закриття
+--// Закриття
 --// ------------------------------------------------------------
 CloseButton.MouseButton1Click:Connect(function()
-    -- Плавне зникання
     TweenService:Create(MainFrame, TweenInfo.new(0.2), {
         Size = UDim2.new(0, 0, 0, 0),
         Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -790,7 +765,7 @@ CloseButton.MouseButton1Click:Connect(function()
 end)
 
 --// ------------------------------------------------------------
---// 15. Поява вікна (scale + fade in)
+--// Поява
 --// ------------------------------------------------------------
 MainFrame.Size = UDim2.new(0, 0, 0, 0)
 MainFrame.BackgroundTransparency = 1
@@ -800,20 +775,33 @@ TweenService:Create(MainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.E
 }):Play()
 
 --// ------------------------------------------------------------
---// 16. Експорт
+--// Експорт
 --// ------------------------------------------------------------
 _G.ModMenu = _G.ModMenu or {}
 _G.ModMenu.ScreenGui = ScreenGui
 _G.ModMenu.MainFrame = MainFrame
 _G.ModMenu.Tabs = Tabs
 _G.ModMenu.TabPages = TabPages
+
 _G.ModMenu.Elements = {
-    SilentAim  = SilentAimToggle,
-    FovToggle  = FovToggle,
-    FovSlider  = FovSlider,
-    SpeedSlider = SpeedSlider,
-    FlyToggle  = FlyToggle,
+    -- Combat
+    SilentAim    = SilentAimToggle,
+    FovToggle    = FovToggle,
+    FovSlider    = FovSlider,
+
+    -- Visual / ESP
+    EspEnabled   = EspEnabled,
+    EspFill      = EspFill,
+    EspOutline   = EspOutline,
+    EspSeeThru   = EspSeeThru,
+    EspTeamCheck = EspTeamCheck,
+    EspMaxDist   = EspMaxDist,
+    EspFillAlpha = EspFillAlpha,
+
+    -- Movement
+    SpeedSlider  = SpeedSlider,
+    FlyToggle    = FlyToggle,
     NoclipToggle = NoclipToggle,
 }
 
-print("[ModMenu] UI з анімаціями успішно завантажено!")
+print("[ModMenu] UI завантажено")
