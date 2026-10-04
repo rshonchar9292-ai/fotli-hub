@@ -1,5 +1,5 @@
 --// ============================================================
---// features/aimbot.lua — Camera Aimbot (Hold RMB)
+--// features/aimbot.lua — Camera Aimbot (Hold RMB) — FIXED v2
 --// Камера плавно наводиться на голову цілі, поки затиснута ПКМ
 --// ============================================================
 
@@ -16,9 +16,9 @@ local Camera           = workspace.CurrentCamera
 --// ---------- СТАН ----------
 local S = {
     Enabled   = false,
-    Smooth    = 0.25,      -- 0.05 = швидко, 1 = повільно
-    Fov       = 150,       -- радіус FOV у пікселях
-    Head      = true,      -- цілитись у голову
+    Smooth    = 0.25,
+    Fov       = 150,
+    Head      = true,
     TeamCheck = true,
     WallCheck = false,
 }
@@ -26,9 +26,10 @@ local S = {
 --// ---------- ЗМІННІ ----------
 local HoldingRMB = false
 local CurrentTarget = nil
-local Highlight = nil      -- підсвітка цілі
+local Highlight = nil
+local OldMouseBehavior = nil
 
---// ---------- FOV CIRCLE (Drawing) ----------
+--// ---------- FOV CIRCLE ----------
 local FovCircle = Drawing.new("Circle")
 FovCircle.Thickness = 1.5
 FovCircle.NumSides = 64
@@ -46,10 +47,13 @@ end
 
 local function GetAimPart(plr)
     if not plr.Character then return nil end
-    return S.Head
-        and plr.Character:FindFirstChild("Head")
-        or  plr.Character:FindFirstChild("UpperTorso")
-        or  plr.Character:FindFirstChild("Torso")
+    if S.Head then
+        return plr.Character:FindFirstChild("Head")
+            or plr.Character:FindFirstChild("UpperTorso")
+    else
+        return plr.Character:FindFirstChild("UpperTorso")
+            or plr.Character:FindFirstChild("HumanoidRootPart")
+    end
 end
 
 local function IsVisible(part)
@@ -59,13 +63,19 @@ local function IsVisible(part)
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
     params.FilterDescendantsInstances = { LocalPlayer.Character, Camera }
-    local result = workspace:Raycast(origin, dir, params)
-    return result == nil
+    return workspace:Raycast(origin, dir, params) == nil
 end
 
---// ---------- ПОШУК НАЙКРАЩОЇ ЦІЛІ ----------
+--// ---------- ПОШУК ЦІЛІ ----------
+--// УВАГА: GetMouseLocation() враховує topbar (~36px зверху).
+--// WorldToViewportPoint — НЕ враховує. Треба компенсувати.
+local function GetMousePos()
+    local inset = game:GetService("GuiService"):GetGuiInset()
+    return UserInputService:GetMouseLocation() - Vector2.new(inset.X, inset.Y)
+end
+
 local function FindTarget()
-    local mousePos = UserInputService:GetMouseLocation()
+    local mousePos = GetMousePos()
     local bestPart, bestPlayer, bestDist = nil, nil, S.Fov
 
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -91,7 +101,7 @@ local function FindTarget()
     return bestPart, bestPlayer
 end
 
---// ---------- ПІДСВІТКА ЦІЛІ ----------
+--// ---------- ПІДСВІТКА ----------
 local function UpdateHighlight(plr)
     if Highlight then
         Highlight:Destroy()
@@ -110,7 +120,7 @@ local function UpdateHighlight(plr)
     end
 end
 
---// ---------- ПКМ: ВКЛ / ВИКЛ ----------
+--// ---------- ПКМ ----------
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -137,22 +147,22 @@ task.spawn(function()
         S.TeamCheck = E.AimTeamCheck:Get()
         S.WallCheck = E.AimWallCheck:Get()
 
-        -- FOV Circle
         FovCircle.Radius  = S.Fov
         FovCircle.Visible = S.Enabled
     end
 end)
 
 --// ---------- ГОЛОВНИЙ ЦИКЛ ----------
-RunService.RenderStepped:Connect(function(dt)
-    -- Позиція FOV-кола — центр екрана (як у CS:GO / Valorant)
-    local viewport = Camera.ViewportSize
-    FovCircle.Position = Vector2.new(viewport.X / 2, viewport.Y / 2)
+--// Використовуємо BindToRenderStep з пріоритетом ПІСЛЯ камери,
+--// щоб наш CFrame не перезаписувався вбудованим camera script Roblox.
+RunService:BindToRenderStep("FotliAimbot", Enum.RenderPriority.Camera.Value + 1, function(dt)
+    --// FOV circle — центр екрана
+    local vp = Camera.ViewportSize
+    FovCircle.Position = Vector2.new(vp.X / 2, vp.Y / 2)
 
-    -- Якщо не активовано / не тримаємо ПКМ — нічого не робимо
     if not S.Enabled or not HoldingRMB then return end
 
-    -- Знаходимо ціль (або оновлюємо)
+    --// Оновлюємо ціль
     if not CurrentTarget or not Alive(CurrentTarget) then
         local part, plr = FindTarget()
         if part and plr then
@@ -165,7 +175,7 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- Отримуємо точку цілі
+    --// Точка цілі
     local part = GetAimPart(CurrentTarget)
     if not part then
         CurrentTarget = nil
@@ -173,10 +183,16 @@ RunService.RenderStepped:Connect(function(dt)
         return
     end
 
-    -- Плавне наведення камери
+    --// Плавне наведення
+    --// Smooth: 0.05 = миттєво, 1 = плавно
+    --// Формула: alpha = 1 - smooth^dt  → стабільна незалежно від FPS
     local camPos = Camera.CFrame.Position
     local targetCFrame = CFrame.new(camPos, part.Position)
-    Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, math.clamp(S.Smooth * 60 * dt, 0, 1))
+
+    local smooth = math.clamp(S.Smooth, 0.01, 1)
+    local alpha  = 1 - math.pow(smooth, dt)
+
+    Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, alpha)
 end)
 
-print("[Aimbot] Camera Aimbot завантажено (Hold RMB)")
+print("[Aimbot] Camera Aimbot v2 завантажено (Hold RMB)")
