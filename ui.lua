@@ -1,5 +1,5 @@
 --// ============================================================
---// ui.lua — Fotli Hub UI (повна версія з анімаціями)
+--// ui.lua — Fotli Hub UI (вкладки зліва, F4 toggle)
 --// ============================================================
 
 -- Захист від повторного завантаження
@@ -28,6 +28,11 @@ local COLORS = {
     Danger        = Color3.fromRGB(240, 80, 100),
 }
 
+--// Розмір вікна
+local WINDOW_W = 720
+local WINDOW_H = 480
+local TABS_W   = 150       -- ширина панелі вкладок (зліва)
+
 --// ------------------------------------------------------------
 --// ScreenGui
 --// ------------------------------------------------------------
@@ -40,16 +45,17 @@ ScreenGui.DisplayOrder = 999
 ScreenGui.Parent = game:GetService("CoreGui")
 
 --// ------------------------------------------------------------
---// Main Frame
+--// Main Frame — спочатку ПРИХОВАНИЙ, покажеться на F4
 --// ------------------------------------------------------------
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 560, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -280, 0.5, -180)
+MainFrame.Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H)
+MainFrame.Position = UDim2.new(0.5, -WINDOW_W/2, 0.5, -WINDOW_H/2)
 MainFrame.BackgroundColor3 = COLORS.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.ClipsDescendants = true
+MainFrame.Visible = false       -- ← приховано до F4
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
@@ -67,7 +73,7 @@ MainStroke.Parent = MainFrame
 --// ------------------------------------------------------------
 local TitleBar = Instance.new("Frame")
 TitleBar.Name = "TitleBar"
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
+TitleBar.Size = UDim2.new(1, 0, 0, 42)
 TitleBar.BackgroundColor3 = COLORS.BackgroundAlt
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = MainFrame
@@ -110,7 +116,7 @@ task.spawn(function()
     end
 end)
 
--- Логотип-крапка
+-- Логотип
 local LogoDot = Instance.new("Frame")
 LogoDot.Size = UDim2.new(0, 8, 0, 8)
 LogoDot.Position = UDim2.new(0, 16, 0.5, -4)
@@ -139,10 +145,10 @@ task.spawn(function()
 end)
 
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, -120, 1, 0)
+TitleLabel.Size = UDim2.new(1, -180, 1, 0)
 TitleLabel.Position = UDim2.new(0, 32, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "FOTLI HUB"
+TitleLabel.Text = "FOTLI HUB   [F4]"
 TitleLabel.TextColor3 = COLORS.Text
 TitleLabel.TextSize = 15
 TitleLabel.Font = Enum.Font.GothamBold
@@ -175,7 +181,7 @@ MinimizeButton.MouseLeave:Connect(function()
     TweenService:Create(MinimizeButton, TweenInfo.new(0.15), {BackgroundColor3 = COLORS.Element}):Play()
 end)
 
--- Close
+-- Close (просто ховає, не руйнує, щоб F4 знову відкрив)
 local CloseButton = Instance.new("TextButton")
 CloseButton.Size = UDim2.new(0, 26, 0, 26)
 CloseButton.Position = UDim2.new(1, -36, 0.5, -13)
@@ -201,15 +207,42 @@ CloseButton.MouseLeave:Connect(function()
 end)
 
 --// ------------------------------------------------------------
---// Content Frame (ліва частина)
+--// TabsFrame — ТЕПЕР ЗЛІВА
+--// ------------------------------------------------------------
+local TabsFrame = Instance.new("Frame")
+TabsFrame.Name = "TabsFrame"
+TabsFrame.Size = UDim2.new(0, TABS_W, 1, -58)
+TabsFrame.Position = UDim2.new(0, 12, 0, 50)
+TabsFrame.BackgroundColor3 = COLORS.BackgroundAlt
+TabsFrame.BorderSizePixel = 0
+TabsFrame.Parent = MainFrame
+
+local TabsCorner = Instance.new("UICorner")
+TabsCorner.CornerRadius = UDim.new(0, 10)
+TabsCorner.Parent = TabsFrame
+
+local TabsPadding = Instance.new("UIPadding")
+TabsPadding.PaddingTop = UDim.new(0, 10)
+TabsPadding.PaddingBottom = UDim.new(0, 10)
+TabsPadding.PaddingLeft = UDim.new(0, 10)
+TabsPadding.PaddingRight = UDim.new(0, 10)
+TabsPadding.Parent = TabsFrame
+
+local TabsLayout = Instance.new("UIListLayout")
+TabsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TabsLayout.Padding = UDim.new(0, 8)
+TabsLayout.Parent = TabsFrame
+
+--// ------------------------------------------------------------
+--// ContentFrame — ТЕПЕР СПРАВА
 --// ------------------------------------------------------------
 local ContentFrame = Instance.new("ScrollingFrame")
 ContentFrame.Name = "ContentFrame"
-ContentFrame.Size = UDim2.new(1, -130, 1, -54)
-ContentFrame.Position = UDim2.new(0, 12, 0, 48)
+ContentFrame.Size = UDim2.new(1, -TABS_W - 36, 1, -58)
+ContentFrame.Position = UDim2.new(0, TABS_W + 24, 0, 50)
 ContentFrame.BackgroundColor3 = COLORS.BackgroundAlt
 ContentFrame.BorderSizePixel = 0
-ContentFrame.ScrollBarThickness = 3
+ContentFrame.ScrollBarThickness = 4
 ContentFrame.ScrollBarImageColor3 = COLORS.Accent
 ContentFrame.ScrollBarImageTransparency = 0.3
 ContentFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -222,43 +255,16 @@ ContentCorner.CornerRadius = UDim.new(0, 10)
 ContentCorner.Parent = ContentFrame
 
 local ContentPadding = Instance.new("UIPadding")
-ContentPadding.PaddingTop = UDim.new(0, 10)
-ContentPadding.PaddingBottom = UDim.new(0, 10)
-ContentPadding.PaddingLeft = UDim.new(0, 10)
-ContentPadding.PaddingRight = UDim.new(0, 10)
+ContentPadding.PaddingTop = UDim.new(0, 12)
+ContentPadding.PaddingBottom = UDim.new(0, 12)
+ContentPadding.PaddingLeft = UDim.new(0, 12)
+ContentPadding.PaddingRight = UDim.new(0, 12)
 ContentPadding.Parent = ContentFrame
 
 local ContentLayout = Instance.new("UIListLayout")
 ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ContentLayout.Padding = UDim.new(0, 8)
 ContentLayout.Parent = ContentFrame
-
---// ------------------------------------------------------------
---// Tabs Frame (права частина)
---// ------------------------------------------------------------
-local TabsFrame = Instance.new("Frame")
-TabsFrame.Name = "TabsFrame"
-TabsFrame.Size = UDim2.new(0, 106, 1, -66)
-TabsFrame.Position = UDim2.new(1, -118, 0, 48)
-TabsFrame.BackgroundColor3 = COLORS.BackgroundAlt
-TabsFrame.BorderSizePixel = 0
-TabsFrame.Parent = MainFrame
-
-local TabsCorner = Instance.new("UICorner")
-TabsCorner.CornerRadius = UDim.new(0, 10)
-TabsCorner.Parent = TabsFrame
-
-local TabsPadding = Instance.new("UIPadding")
-TabsPadding.PaddingTop = UDim.new(0, 8)
-TabsPadding.PaddingBottom = UDim.new(0, 8)
-TabsPadding.PaddingLeft = UDim.new(0, 8)
-TabsPadding.PaddingRight = UDim.new(0, 8)
-TabsPadding.Parent = TabsFrame
-
-local TabsLayout = Instance.new("UIListLayout")
-TabsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabsLayout.Padding = UDim.new(0, 6)
-TabsLayout.Parent = TabsFrame
 
 --// ------------------------------------------------------------
 --// Сховище
@@ -272,14 +278,15 @@ local ActiveTab = nil
 --// ------------------------------------------------------------
 local function CreateTab(name)
     local TabButton = Instance.new("TextButton")
-    TabButton.Size = UDim2.new(1, 0, 0, 34)
+    TabButton.Size = UDim2.new(1, 0, 0, 40)
     TabButton.BackgroundColor3 = COLORS.Element
     TabButton.BorderSizePixel = 0
-    TabButton.Text = name
+    TabButton.Text = "  " .. name
     TabButton.TextColor3 = COLORS.TextDim
-    TabButton.TextSize = 13
+    TabButton.TextSize = 14
     TabButton.Font = Enum.Font.GothamMedium
     TabButton.AutoButtonColor = false
+    TabButton.TextXAlignment = Enum.TextXAlignment.Left
     TabButton.Parent = TabsFrame
 
     local TabCorner = Instance.new("UICorner")
@@ -348,7 +355,7 @@ local function CreateTab(name)
             TextColor3 = COLORS.Text,
         }):Play()
         TweenService:Create(AccentBar, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
-            Size = UDim2.new(0, 3, 0, 22),
+            Size = UDim2.new(0, 3, 0, 28),
         }):Play()
         TweenService:Create(TabStroke, TweenInfo.new(0.2), {
             Color = COLORS.Accent,
@@ -376,7 +383,7 @@ local function CreateToggle(parent, text, default, callback)
     local state = default or false
 
     local Holder = Instance.new("Frame")
-    Holder.Size = UDim2.new(1, 0, 0, 38)
+    Holder.Size = UDim2.new(1, 0, 0, 40)
     Holder.BackgroundColor3 = COLORS.Element
     Holder.BorderSizePixel = 0
     Holder.Parent = parent
@@ -392,19 +399,19 @@ local function CreateToggle(parent, text, default, callback)
     HolderStroke.Parent = Holder
 
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, -80, 1, 0)
+    Label.Size = UDim2.new(1, -90, 1, 0)
     Label.Position = UDim2.new(0, 14, 0, 0)
     Label.BackgroundTransparency = 1
     Label.Text = text
     Label.TextColor3 = COLORS.Text
-    Label.TextSize = 13
+    Label.TextSize = 14
     Label.Font = Enum.Font.GothamMedium
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = Holder
 
     local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size = UDim2.new(0, 44, 0, 22)
-    ToggleBtn.Position = UDim2.new(1, -56, 0.5, -11)
+    ToggleBtn.Size = UDim2.new(0, 46, 0, 24)
+    ToggleBtn.Position = UDim2.new(1, -60, 0.5, -12)
     ToggleBtn.BackgroundColor3 = state and COLORS.Accent or Color3.fromRGB(50, 50, 65)
     ToggleBtn.BorderSizePixel = 0
     ToggleBtn.Text = ""
@@ -422,8 +429,8 @@ local function CreateToggle(parent, text, default, callback)
     ToggleGlow.Parent = ToggleBtn
 
     local Knob = Instance.new("Frame")
-    Knob.Size = UDim2.new(0, 18, 0, 18)
-    Knob.Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+    Knob.Size = UDim2.new(0, 20, 0, 20)
+    Knob.Position = state and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)
     Knob.BackgroundColor3 = Color3.fromRGB(245, 245, 250)
     Knob.BorderSizePixel = 0
     Knob.Parent = ToggleBtn
@@ -437,12 +444,12 @@ local function CreateToggle(parent, text, default, callback)
         local info = TweenInfo.new(animate and 0.25 or 0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         if state then
             TweenService:Create(ToggleBtn, info, {BackgroundColor3 = COLORS.Accent}):Play()
-            TweenService:Create(Knob, info, {Position = UDim2.new(1, -20, 0.5, -9)}):Play()
+            TweenService:Create(Knob, info, {Position = UDim2.new(1, -22, 0.5, -10)}):Play()
             TweenService:Create(ToggleGlow, info, {Transparency = 0}):Play()
             TweenService:Create(HolderStroke, info, {Color = COLORS.Accent, Transparency = 0.3}):Play()
         else
             TweenService:Create(ToggleBtn, info, {BackgroundColor3 = Color3.fromRGB(50, 50, 65)}):Play()
-            TweenService:Create(Knob, info, {Position = UDim2.new(0, 2, 0.5, -9)}):Play()
+            TweenService:Create(Knob, info, {Position = UDim2.new(0, 2, 0.5, -10)}):Play()
             TweenService:Create(ToggleGlow, info, {Transparency = 1}):Play()
             TweenService:Create(HolderStroke, info, {Color = COLORS.Stroke, Transparency = 0.5}):Play()
         end
@@ -474,7 +481,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
     local value = default or min
 
     local Holder = Instance.new("Frame")
-    Holder.Size = UDim2.new(1, 0, 0, 54)
+    Holder.Size = UDim2.new(1, 0, 0, 58)
     Holder.BackgroundColor3 = COLORS.Element
     Holder.BorderSizePixel = 0
     Holder.Parent = parent
@@ -491,29 +498,29 @@ local function CreateSlider(parent, text, min, max, default, callback)
 
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(0.6, 0, 0, 22)
-    Label.Position = UDim2.new(0, 14, 0, 6)
+    Label.Position = UDim2.new(0, 14, 0, 8)
     Label.BackgroundTransparency = 1
     Label.Text = text
     Label.TextColor3 = COLORS.Text
-    Label.TextSize = 13
+    Label.TextSize = 14
     Label.Font = Enum.Font.GothamMedium
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = Holder
 
     local ValueLabel = Instance.new("TextLabel")
     ValueLabel.Size = UDim2.new(0.4, -14, 0, 22)
-    ValueLabel.Position = UDim2.new(0.6, 0, 0, 6)
+    ValueLabel.Position = UDim2.new(0.6, 0, 0, 8)
     ValueLabel.BackgroundTransparency = 1
     ValueLabel.Text = tostring(value)
     ValueLabel.TextColor3 = COLORS.Accent
-    ValueLabel.TextSize = 13
+    ValueLabel.TextSize = 14
     ValueLabel.Font = Enum.Font.GothamBold
     ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
     ValueLabel.Parent = Holder
 
     local SliderBack = Instance.new("Frame")
-    SliderBack.Size = UDim2.new(1, -28, 0, 6)
-    SliderBack.Position = UDim2.new(0, 14, 0, 36)
+    SliderBack.Size = UDim2.new(1, -28, 0, 8)
+    SliderBack.Position = UDim2.new(0, 14, 0, 38)
     SliderBack.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
     SliderBack.BorderSizePixel = 0
     SliderBack.Parent = Holder
@@ -540,8 +547,8 @@ local function CreateSlider(parent, text, min, max, default, callback)
     FillGradient.Parent = SliderFill
 
     local Knob = Instance.new("TextButton")
-    Knob.Size = UDim2.new(0, 16, 0, 16)
-    Knob.Position = UDim2.new((value - min) / (max - min), -8, 0.5, -8)
+    Knob.Size = UDim2.new(0, 18, 0, 18)
+    Knob.Position = UDim2.new((value - min) / (max - min), -9, 0.5, -9)
     Knob.BackgroundColor3 = Color3.fromRGB(250, 250, 255)
     Knob.BorderSizePixel = 0
     Knob.Text = ""
@@ -569,7 +576,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
 
         local info = TweenInfo.new(animate and 0.08 or 0, Enum.EasingStyle.Quad)
         TweenService:Create(SliderFill, info, {Size = UDim2.new(relX, 0, 1, 0)}):Play()
-        TweenService:Create(Knob, info, {Position = UDim2.new(relX, -8, 0.5, -8)}):Play()
+        TweenService:Create(Knob, info, {Position = UDim2.new(relX, -9, 0.5, -9)}):Play()
         ValueLabel.Text = tostring(value)
 
         if callback then callback(value) end
@@ -619,7 +626,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
             value = v
             local relX = (v - min) / (max - min)
             SliderFill.Size = UDim2.new(relX, 0, 1, 0)
-            Knob.Position = UDim2.new(relX, -8, 0.5, -8)
+            Knob.Position = UDim2.new(relX, -9, 0.5, -9)
             ValueLabel.Text = tostring(v)
             if callback then callback(v) end
         end,
@@ -633,11 +640,11 @@ end
 --// ------------------------------------------------------------
 local function CreateSection(parent, text)
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, 0, 0, 24)
+    Label.Size = UDim2.new(1, 0, 0, 26)
     Label.BackgroundTransparency = 1
     Label.Text = "›  " .. string.upper(text)
     Label.TextColor3 = COLORS.Accent
-    Label.TextSize = 12
+    Label.TextSize = 13
     Label.Font = Enum.Font.GothamBold
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = parent
@@ -683,7 +690,7 @@ local NoclipToggle = CreateToggle(MovementPage, "Noclip", false, nil)
 --// -------- Animation --------
 CreateSection(AnimationPage, "Animation")
 
---// Активуємо Combat за замовчуванням
+--// Активуємо Combat
 for tabName, data in pairs(Tabs) do
     data.Button.BackgroundColor3 = COLORS.Element
     data.Button.TextColor3 = COLORS.TextDim
@@ -691,7 +698,7 @@ for tabName, data in pairs(Tabs) do
 end
 Tabs["Combat"].Button.BackgroundColor3 = COLORS.ElementHover
 Tabs["Combat"].Button.TextColor3 = COLORS.Text
-Tabs["Combat"].AccentBar.Size = UDim2.new(0, 3, 0, 22)
+Tabs["Combat"].AccentBar.Size = UDim2.new(0, 3, 0, 28)
 Tabs["Combat"].Stroke.Color = COLORS.Accent
 Tabs["Combat"].Stroke.Transparency = 0
 TabPages["Combat"].Visible = true
@@ -739,40 +746,53 @@ MinimizeButton.MouseButton1Click:Connect(function()
         ContentFrame.Visible = false
         TabsFrame.Visible = false
         TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
-            Size = UDim2.new(0, 560, 0, 40),
+            Size = UDim2.new(0, WINDOW_W, 0, 42),
         }):Play()
         MinimizeButton.Text = "+"
     else
         ContentFrame.Visible = true
         TabsFrame.Visible = true
         TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
-            Size = UDim2.new(0, 560, 0, 360),
+            Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H),
         }):Play()
         MinimizeButton.Text = "–"
     end
 end)
 
 --// ------------------------------------------------------------
---// Закриття
+--// Close — просто ховає (F4 знову відкриє)
 --// ------------------------------------------------------------
 CloseButton.MouseButton1Click:Connect(function()
-    TweenService:Create(MainFrame, TweenInfo.new(0.2), {
-        Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-    }):Play()
-    task.wait(0.2)
-    ScreenGui:Destroy()
+    MainFrame.Visible = false
 end)
 
 --// ------------------------------------------------------------
---// Поява
+--// F4 — показати/сховати меню
 --// ------------------------------------------------------------
-MainFrame.Size = UDim2.new(0, 0, 0, 0)
-MainFrame.BackgroundTransparency = 1
-TweenService:Create(MainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = UDim2.new(0, 560, 0, 360),
-    BackgroundTransparency = 0,
-}):Play()
+local function ToggleMenu()
+    if MainFrame.Visible then
+        -- Плавне зникання
+        TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+            Size = UDim2.new(0, 0, 0, 0),
+        }):Play()
+        task.wait(0.2)
+        MainFrame.Visible = false
+        MainFrame.Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H)   -- повертаємо розмір
+    else
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, 0, 0, 0)
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H),
+        }):Play()
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.F4 then
+        ToggleMenu()
+    end
+end)
 
 --// ------------------------------------------------------------
 --// Експорт
@@ -784,12 +804,10 @@ _G.ModMenu.Tabs = Tabs
 _G.ModMenu.TabPages = TabPages
 
 _G.ModMenu.Elements = {
-    -- Combat
     SilentAim    = SilentAimToggle,
     FovToggle    = FovToggle,
     FovSlider    = FovSlider,
 
-    -- Visual / ESP
     EspEnabled   = EspEnabled,
     EspFill      = EspFill,
     EspOutline   = EspOutline,
@@ -798,10 +816,9 @@ _G.ModMenu.Elements = {
     EspMaxDist   = EspMaxDist,
     EspFillAlpha = EspFillAlpha,
 
-    -- Movement
     SpeedSlider  = SpeedSlider,
     FlyToggle    = FlyToggle,
     NoclipToggle = NoclipToggle,
 }
 
-print("[ModMenu] UI завантажено")
+print("[ModMenu] UI завантажено. Натисни F4 щоб відкрити меню.")
