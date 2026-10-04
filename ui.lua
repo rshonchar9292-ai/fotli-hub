@@ -1,5 +1,6 @@
 --// ============================================================
 --// ui.lua — Fotli Hub UI (вкладки зліва, F4 toggle)
+--// Combat: Camera Aimbot + Silent Aim
 --// ============================================================
 
 -- Захист від повторного завантаження
@@ -31,7 +32,7 @@ local COLORS = {
 --// Розмір вікна
 local WINDOW_W = 720
 local WINDOW_H = 480
-local TABS_W   = 150       -- ширина панелі вкладок (зліва)
+local TABS_W   = 150
 
 --// ------------------------------------------------------------
 --// ScreenGui
@@ -45,7 +46,7 @@ ScreenGui.DisplayOrder = 999
 ScreenGui.Parent = game:GetService("CoreGui")
 
 --// ------------------------------------------------------------
---// Main Frame — спочатку ПРИХОВАНИЙ, покажеться на F4
+--// Main Frame — приховано до F4
 --// ------------------------------------------------------------
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
@@ -55,7 +56,7 @@ MainFrame.BackgroundColor3 = COLORS.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.ClipsDescendants = true
-MainFrame.Visible = false       -- ← приховано до F4
+MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
@@ -181,7 +182,7 @@ MinimizeButton.MouseLeave:Connect(function()
     TweenService:Create(MinimizeButton, TweenInfo.new(0.15), {BackgroundColor3 = COLORS.Element}):Play()
 end)
 
--- Close (просто ховає, не руйнує, щоб F4 знову відкрив)
+-- Close (ховає, не руйнує)
 local CloseButton = Instance.new("TextButton")
 CloseButton.Size = UDim2.new(0, 26, 0, 26)
 CloseButton.Position = UDim2.new(1, -36, 0.5, -13)
@@ -207,7 +208,7 @@ CloseButton.MouseLeave:Connect(function()
 end)
 
 --// ------------------------------------------------------------
---// TabsFrame — ТЕПЕР ЗЛІВА
+--// TabsFrame — ЗЛІВА
 --// ------------------------------------------------------------
 local TabsFrame = Instance.new("Frame")
 TabsFrame.Name = "TabsFrame"
@@ -234,7 +235,7 @@ TabsLayout.Padding = UDim.new(0, 8)
 TabsLayout.Parent = TabsFrame
 
 --// ------------------------------------------------------------
---// ContentFrame — ТЕПЕР СПРАВА
+--// ContentFrame — СПРАВА
 --// ------------------------------------------------------------
 local ContentFrame = Instance.new("ScrollingFrame")
 ContentFrame.Name = "ContentFrame"
@@ -659,12 +660,27 @@ local VisualPage    = CreateTab("Visual")
 local MovementPage  = CreateTab("Movement")
 local AnimationPage = CreateTab("Animation")
 
---// -------- Combat --------
-CreateSection(CombatPage, "Aim Assist")
+--// -------- Combat: Camera Aimbot --------
+CreateSection(CombatPage, "Camera Aimbot")
 
-local SilentAimToggle = CreateToggle(CombatPage, "Silent Aim", false, nil)
-local FovToggle       = CreateToggle(CombatPage, "Aim (FOV)",  false, nil)
-local FovSlider       = CreateSlider(CombatPage, "FOV Radius", 10, 500, 100, nil)
+local AimEnabled   = CreateToggle(CombatPage, "Aimbot (Hold RMB)", false, nil)
+local AimSmooth    = CreateSlider(CombatPage, "Aimbot Smoothness", 0.05, 1, 0.25, nil)
+local AimFovSlider = CreateSlider(CombatPage, "Aimbot FOV", 10, 500, 150, nil)
+
+--// -------- Combat: Silent Aim --------
+CreateSection(CombatPage, "Silent Aim")
+
+local SilentEnabled   = CreateToggle(CombatPage, "Silent Aim",      false, nil)
+local SilentShowFov   = CreateToggle(CombatPage, "Show Silent FOV", true,  nil)
+local SilentFovSlider = CreateSlider(CombatPage, "Silent FOV", 10, 500, 150, nil)
+local SilentHitChance = CreateSlider(CombatPage, "Hit Chance (%)", 0, 100, 100, nil)
+
+--// -------- Combat: Shared --------
+CreateSection(CombatPage, "Target")
+
+local AimTargetPart = CreateToggle(CombatPage, "Aim at Head", true, nil)
+local AimTeamCheck  = CreateToggle(CombatPage, "Team Check", true, nil)
+local AimWallCheck  = CreateToggle(CombatPage, "Wall Check", false, nil)
 
 --// -------- Visual (ESP) --------
 CreateSection(VisualPage, "Player ESP")
@@ -690,7 +706,7 @@ local NoclipToggle = CreateToggle(MovementPage, "Noclip", false, nil)
 --// -------- Animation --------
 CreateSection(AnimationPage, "Animation")
 
---// Активуємо Combat
+--// Активуємо Combat за замовчуванням
 for tabName, data in pairs(Tabs) do
     data.Button.BackgroundColor3 = COLORS.Element
     data.Button.TextColor3 = COLORS.TextDim
@@ -760,24 +776,23 @@ MinimizeButton.MouseButton1Click:Connect(function()
 end)
 
 --// ------------------------------------------------------------
---// Close — просто ховає (F4 знову відкриє)
+--// Close — ховає (F4 знову відкриє)
 --// ------------------------------------------------------------
 CloseButton.MouseButton1Click:Connect(function()
     MainFrame.Visible = false
 end)
 
 --// ------------------------------------------------------------
---// F4 — показати/сховати меню
+--// F4 — показати/сховати
 --// ------------------------------------------------------------
 local function ToggleMenu()
     if MainFrame.Visible then
-        -- Плавне зникання
         TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
             Size = UDim2.new(0, 0, 0, 0),
         }):Play()
         task.wait(0.2)
         MainFrame.Visible = false
-        MainFrame.Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H)   -- повертаємо розмір
+        MainFrame.Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H)
     else
         MainFrame.Visible = true
         MainFrame.Size = UDim2.new(0, 0, 0, 0)
@@ -804,10 +819,23 @@ _G.ModMenu.Tabs = Tabs
 _G.ModMenu.TabPages = TabPages
 
 _G.ModMenu.Elements = {
-    SilentAim    = SilentAimToggle,
-    FovToggle    = FovToggle,
-    FovSlider    = FovSlider,
+    -- Combat: Aimbot
+    AimEnabled    = AimEnabled,
+    AimSmooth     = AimSmooth,
+    AimFovSlider  = AimFovSlider,
 
+    -- Combat: Silent Aim
+    SilentEnabled   = SilentEnabled,
+    SilentShowFov   = SilentShowFov,
+    SilentFovSlider = SilentFovSlider,
+    SilentHitChance = SilentHitChance,
+
+    -- Combat: Shared
+    AimTargetPart = AimTargetPart,
+    AimTeamCheck  = AimTeamCheck,
+    AimWallCheck  = AimWallCheck,
+
+    -- Visual / ESP
     EspEnabled   = EspEnabled,
     EspFill      = EspFill,
     EspOutline   = EspOutline,
@@ -816,6 +844,7 @@ _G.ModMenu.Elements = {
     EspMaxDist   = EspMaxDist,
     EspFillAlpha = EspFillAlpha,
 
+    -- Movement
     SpeedSlider  = SpeedSlider,
     FlyToggle    = FlyToggle,
     NoclipToggle = NoclipToggle,
