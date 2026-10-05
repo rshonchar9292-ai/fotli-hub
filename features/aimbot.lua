@@ -1,263 +1,270 @@
 --// ============================================================
---// features/aimbot.lua — Aimbot (як у Fleece's Utility Panel)
---// 4 методи: Smooth Aim, Instant Snap, Move Cursor, Silent Aim
---// Працює з UI через _G.ModMenu.Elements
+--// features/aimbot.lua — AIMBOT v5 (WORKING)
 --// ============================================================
 
---// Чекаємо UI
-repeat task.wait(0.1) until _G.ModMenu and _G.ModMenu.Elements
-local E = _G.ModMenu.Elements
+print("[Aimbot] === СТАРТ ===")
 
+--// ---------- 1. ЧЕКАЄМО UI ----------
+local tries = 0
+while (not _G.ModMenu or not _G.ModMenu.Elements or not _G.ModMenu.ScreenGui) and tries < 50 do
+    task.wait(0.1)
+    tries = tries + 1
+end
+
+if not _G.ModMenu or not _G.ModMenu.Elements or not _G.ModMenu.ScreenGui then
+    warn("[Aimbot] ❌ UI не знайдено — вихід")
+    return
+end
+
+local E = _G.ModMenu.Elements
+local ScreenGui = _G.ModMenu.ScreenGui
+print("[Aimbot] ✓ UI знайдено")
+
+--// ---------- 2. СЕРВІСИ ----------
 local Players          = game:GetService("Players")
 local RunService       = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace        = game:GetService("Workspace")
+local GuiService       = game:GetService("GuiService")
 local LocalPlayer      = Players.LocalPlayer
 local Camera           = Workspace.CurrentCamera
 
---// ---------- СТАН ----------
-local S = {
-    Enabled      = false,
-    Method       = "camerasmooth",  -- camerasmooth | camerasnap | mousemove | silent
-    Part         = "Head",          -- Head | Torso | HumanoidRootPart | closest
-    Smoothness   = 10,
-    Fov          = 160,
-    ShowFov      = true,
-    TeamCheck    = false,
-    WallCheck    = true,
-    HoldRMB      = true,
+--// ---------- 3. СТАН ----------
+local State = {
+    Enabled       = false,
+    Smoothness    = 0.25,
+    Fov           = 150,
+    TeamCheck     = true,
+    WallCheck     = false,
+    TargetPart    = "Head",
+    CurrentTarget = nil,
+    DebugTimer    = 0,
+    DebugTargets  = 0,
 }
 
---// ---------- ДОПОМІЖНІ ----------
-local function Alive(plr)
-    if not plr or not plr.Character then return false end
-    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-    return hum and hum.Health > 0
-end
-
-local function LocalAlive()
+--// ---------- 4. УТИЛІТИ ----------
+local function localAlive()
     local char = LocalPlayer.Character
     if not char then return false end
     local hum = char:FindFirstChildOfClass("Humanoid")
-    return hum and hum.Health > 0
+    return hum ~= nil and hum.Health > 0
 end
 
---// ---------- ОТРИМАННЯ ПОЗИЦІЇ МИШІ ----------
-local function aimOrigin()
-    local inset = game:GetService("GuiService"):GetGuiInset()
-    return UserInputService:GetMouseLocation() - Vector2.new(inset.X, inset.Y)
+--// GetMouseLocation враховує topbar (36px)
+--// WorldToViewportPoint — НЕ враховує
+--// Тому додаємо inset до viewport point
+local function getInset()
+    local ok, inset = pcall(function() return GuiService:GetGuiInset() end)
+    return ok and inset or Vector2.new(0, 36)
 end
 
---// ---------- ВИБІР ЧАСТИНИ ДЛЯ АІМУ ----------
-local AIM_PART_SETS = {
-    Head           = { "Head" },
-    Torso          = { "UpperTorso", "Torso" },
-    HumanoidRootPart = { "HumanoidRootPart" },
-}
-
-local function aimPartOf(char, key)
-    if key == "Closest" or key == "closest" then
-        --// Найближча до курсора частина серед усіх
-        local best, bestD
-        local cursor = aimOrigin()
-        for _, list in pairs(AIM_PART_SETS) do
-            for _, n in ipairs(list) do
-                local part = char:FindFirstChild(n)
-                if part and part:IsA("BasePart") then
-                    local sp = Camera:WorldToViewportPoint(part.Position)
-                    if sp.Z > 0 then
-                        local d = (Vector2.new(sp.X, sp.Y) - cursor).Magnitude
-                        if not bestD or d < bestD then best, bestD = part, d end
-                    end
-                end
-            end
-        end
-        return best or char:FindFirstChild("HumanoidRootPart")
+local function getTargetPart(char)
+    if not char then return nil end
+    if State.TargetPart == "Head" then
+        return char:FindFirstChild("Head")
+    elseif State.TargetPart == "Torso" then
+        return char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    else
+        return char:FindFirstChild("HumanoidRootPart")
     end
-    for _, n in ipairs(AIM_PART_SETS[key] or AIM_PART_SETS.Head) do
-        local part = char:FindFirstChild(n)
-        if part and part:IsA("BasePart") then return part end
-    end
-    return char:FindFirstChild("HumanoidRootPart")
 end
 
---// ---------- WALL CHECK (чи видно ціль) ----------
-local hasLineOfSight
-do
+local function hasLineOfSight(part)
+    if not State.WallCheck then return true end
+    local origin = Camera.CFrame.Position
+    local dir = part.Position - origin
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
-    params.IgnoreWater = true
-    local filter = table.create(2)
+    params.FilterDescendantsInstances = {
+        LocalPlayer.Character,
+        Camera,
+        part.Parent,
+    }
+    return Workspace:Raycast(origin, dir, params) == nil
+end
 
-    function hasLineOfSight(part)
-        local origin = Camera.CFrame.Position
-        local char = LocalPlayer.Character
-        filter[1] = char
-        filter[2] = part.Parent
-        params.FilterDescendantsInstances = filter
-        return Workspace:Raycast(origin, part.Position - origin, params) == nil
+local function isEnemy(plr)
+    if plr == LocalPlayer then return false end
+    if not plr.Character then return false end
+    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return false end
+    if State.TeamCheck and plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
+        return false
     end
+    return true
 end
 
---// ---------- ЧИ ТРИМАЄ ГРАВЕЦЬ ПКМ ----------
-local function holdActive()
-    if not S.HoldRMB then return true end
-    return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-end
+--// ---------- 5. ПОШУК ЦІЛІ ----------
+local function findTarget()
+    if not Camera then return nil end
 
---// ---------- ПОШУК ЦІЛІ ----------
-local function findAimTarget()
-    if not Camera or not LocalAlive() then return nil end
-    local cursor = aimOrigin()
-    local best, bestD
+    local inset = getInset()
+    local mouseScreen = UserInputService:GetMouseLocation()
 
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
-            local skip = S.TeamCheck and p.Team == LocalPlayer.Team
-            local hum = p.Character:FindFirstChildOfClass("Humanoid")
-            if not skip and hum and hum.Health > 0 then
-                local part = aimPartOf(p.Character, S.Part)
-                if part then
-                    local sp = Camera:WorldToViewportPoint(part.Position)
-                    if sp.Z > 0 then
-                        local d = (Vector2.new(sp.X, sp.Y) - cursor).Magnitude
-                        if d <= S.Fov and (not bestD or d < bestD) then
-                            if not S.WallCheck or hasLineOfSight(part) then
-                                best, bestD = part, d
-                            end
-                        end
+    local bestPart, bestPlr, bestDist = nil, nil, State.Fov
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if isEnemy(plr) then
+            local part = getTargetPart(plr.Character)
+            if part then
+                local vpPoint, onScreen = Camera:WorldToViewportPoint(part.Position)
+                if onScreen and vpPoint.Z > 0 then
+                    --// Переводимо viewport → screen (додаємо topbar offset)
+                    local screenPoint = Vector2.new(vpPoint.X, vpPoint.Y + inset.Y)
+                    local d = (screenPoint - mouseScreen).Magnitude
+                    if d < bestDist and hasLineOfSight(part) then
+                        bestDist = d
+                        bestPart = part
+                        bestPlr = plr
                     end
                 end
             end
         end
     end
-    return best
+
+    State.CurrentTarget = bestPlr
+    return bestPart
 end
 
---// ---------- FOV CIRCLE ----------
-local fovCircle
-do
-    --// Використовуємо Frame (як у Fleece), щоб працювало навіть без Drawing
-    local screen = _G.ModMenu.ScreenGui
-    local ring = Instance.new("Frame")
-    ring.Name = "AimbotFovCircle"
-    ring.BackgroundTransparency = 1
-    ring.AnchorPoint = Vector2.new(0.5, 0.5)
-    ring.Size = UDim2.new(0, 320, 0, 320)
-    ring.Visible = false
-    ring.ZIndex = 450
-    ring.Parent = screen
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = ring
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Thickness = 1
-    stroke.Transparency = 0.45
-    stroke.Parent = ring
-
-    fovCircle = { Frame = ring, Stroke = stroke }
-end
-
---// ---------- SILENT AIM (окремо) ----------
-local silentMouse = LocalPlayer:GetMouse()
-local silentTarget = nil
-local silentHookInstalled = false
-
-local function installSilentHook()
-    if silentHookInstalled then return end
-    silentHookInstalled = true
-
-    local original
-    original = hookmetamethod(game, "__index", newcclosure(function(self, key)
-        if not checkcaller() and self == silentMouse and silentTarget and silentTarget.Parent then
-            if key == "Hit" then return CFrame.new(silentTarget.Position) end
-            if key == "Target" then return silentTarget end
-        end
-        return original(self, key)
-    end))
-end
-
---// ---------- ГОЛОВНИЙ ЦИКЛ ----------
-RunService:BindToRenderStep("FotliAimbot", Enum.RenderPriority.Camera.Value + 1, function(dt)
-    --// Оновлюємо FOV circle
-    if fovCircle then
-        local pos = aimOrigin()
-        fovCircle.Frame.Position = UDim2.fromOffset(pos.X, pos.Y)
-        fovCircle.Frame.Size = UDim2.fromOffset(S.Fov * 2, S.Fov * 2)
-        fovCircle.Frame.Visible = S.Enabled and S.ShowFov
-        fovCircle.Stroke.Color = silentTarget and Color3.fromRGB(255, 60, 60) or Color3.fromRGB(255, 255, 255)
-    end
-
-    if not S.Enabled then
-        silentTarget = nil
-        return
-    end
-
-    --// Silent Aim — окремий потік
-    if S.Method == "silent" then
-        if not holdActive() then
-            silentTarget = nil
-            return
-        end
-        silentTarget = findAimTarget()
-        return
-    end
-
-    --// Інші методи — звичайні
-    if not LocalAlive() or not holdActive() then return end
-    local target = findAimTarget()
-    if not target then return end
-
-    --// SMOOTH AIM
-    if S.Method == "camerasmooth" then
-        local cam = Camera
-        local goal = CFrame.lookAt(cam.CFrame.Position, target.Position)
-        local smooth = math.max(S.Smoothness, 1)
-        cam.CFrame = cam.CFrame:Lerp(goal, 1 / smooth * 60 * dt)
-
-    --// INSTANT SNAP
-    elseif S.Method == "camerasnap" then
-        Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, target.Position)
-
-    --// MOVE CURSOR (переміщує мишу)
-    elseif S.Method == "mousemove" then
-        local sp = Camera:WorldToViewportPoint(target.Position)
-        if sp.Z > 0 then
-            local cursor = aimOrigin()
-            local delta = Vector2.new(sp.X, sp.Y) - cursor
-            local step = math.max(S.Smoothness, 1)
-            pcall(function() mousemoverel(delta.X / step, delta.Y / step) end)
-        end
-    end
+--// ---------- 6. FOV CIRCLE ----------
+local hasDrawing = pcall(function()
+    local d = Drawing.new("Circle")
+    d:Remove()
 end)
 
---// ---------- СИНХРОНІЗАЦІЯ З UI ----------
+local fovCircle, fovFrame, fovStroke
+
+if hasDrawing then
+    fovCircle = Drawing.new("Circle")
+    fovCircle.Thickness = 1.5
+    fovCircle.NumSides = 64
+    fovCircle.Filled = false
+    fovCircle.Transparency = 0.5
+    fovCircle.Color = Color3.fromRGB(255, 255, 255)
+    fovCircle.Visible = false
+    print("[Aimbot] ✓ FOV circle: Drawing API")
+else
+    fovFrame = Instance.new("Frame")
+    fovFrame.Name = "AimbotFOV"
+    fovFrame.BackgroundTransparency = 1
+    fovFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    fovFrame.Size = UDim2.fromOffset(State.Fov * 2, State.Fov * 2)
+    fovFrame.Visible = false
+    fovFrame.ZIndex = 500
+    fovFrame.Parent = ScreenGui
+
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(1, 0)
+    c.Parent = fovFrame
+
+    fovStroke = Instance.new("UIStroke")
+    fovStroke.Color = Color3.fromRGB(255, 255, 255)
+    fovStroke.Thickness = 1.5
+    fovStroke.Transparency = 0.5
+    fovStroke.Parent = fovFrame
+    print("[Aimbot] ✓ FOV circle: Frame fallback")
+end
+
+--// ---------- 7. СИНХРОНІЗАЦІЯ З UI ----------
 task.spawn(function()
     while task.wait(0.1) do
         if not (_G.ModMenu and _G.ModMenu.Elements) then break end
+        local ok, v
 
-        --// Основні
-        S.Enabled   = E.AimEnabled:Get()
-        S.Smoothness = E.AimSmooth:Get()
-        S.Fov       = E.AimFovSlider:Get()
-        S.TeamCheck = E.AimTeamCheck:Get()
-        S.WallCheck = E.AimWallCheck:Get()
+        ok, v = pcall(function() return E.AimEnabled:Get() end)
+        if ok then State.Enabled = v end
 
-        --// Aim at Head → вибір частини
-        S.Part = E.AimTargetPart:Get() and "Head" or "Torso"
+        ok, v = pcall(function() return E.AimSmooth:Get() end)
+        if ok then State.Smoothness = v end
 
-        --// Silent Aim
-        if E.SilentEnabled and E.SilentEnabled:Get() then
-            S.Method = "silent"
-            if not silentHookInstalled then installSilentHook() end
-        elseif S.Method == "silent" then
-            S.Method = "camerasmooth"
-            silentTarget = nil
-        end
+        ok, v = pcall(function() return E.AimFovSlider:Get() end)
+        if ok then State.Fov = v end
+
+        ok, v = pcall(function() return E.AimTeamCheck:Get() end)
+        if ok then State.TeamCheck = v end
+
+        ok, v = pcall(function() return E.AimWallCheck:Get() end)
+        if ok then State.WallCheck = v end
+
+        ok, v = pcall(function() return E.AimTargetPart:Get() end)
+        if ok then State.TargetPart = v and "Head" or "Torso" end
     end
 end)
 
-print("[Aimbot] Fleece-style Aimbot завантажено (Hold RMB)")
+--// ---------- 8. АНТИ-КОНФЛІКТ ----------
+pcall(function() RunService:UnbindFromRenderStep("FotliAimbot") end)
+pcall(function() RunService:UnbindFromRenderStep("FotliAimbotV5") end)
+
+--// ---------- 9. ГОЛОВНИЙ ЦИКЛ ----------
+RunService:BindToRenderStep("FotliAimbotV5", Enum.RenderPriority.Camera.Value + 1, function(dt)
+    --// 9.1 FOV circle
+    local inset = getInset()
+    local mouseScreen = UserInputService:GetMouseLocation()
+
+    if fovCircle then
+        fovCircle.Position = mouseScreen
+        fovCircle.Radius = State.Fov
+        fovCircle.Visible = State.Enabled
+    elseif fovFrame then
+        fovFrame.Position = UDim2.fromOffset(mouseScreen.X, mouseScreen.Y)
+        fovFrame.Size = UDim2.fromOffset(State.Fov * 2, State.Fov * 2)
+        fovFrame.Visible = State.Enabled
+    end
+
+    --// 9.2 Якщо вимкнено — вихід
+    if not State.Enabled then return end
+
+    --// 9.3 ПКМ
+    if not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        if fovCircle then fovCircle.Color = Color3.fromRGB(255, 255, 255) end
+        if fovStroke then fovStroke.Color = Color3.fromRGB(255, 255, 255) end
+        return
+    end
+
+    --// 9.4 Живий персонаж
+    if not localAlive() then return end
+
+    --// 9.5 Пошук цілі
+    local targetPart = findTarget()
+    if not targetPart then
+        if fovCircle then fovCircle.Color = Color3.fromRGB(255, 255, 255) end
+        if fovStroke then fovStroke.Color = Color3.fromRGB(255, 255, 255) end
+        return
+    end
+
+    --// 9.6 Підсвітка FOV
+    if fovCircle then fovCircle.Color = Color3.fromRGB(255, 60, 60) end
+    if fovStroke then fovStroke.Color = Color3.fromRGB(255, 60, 60) end
+
+    --// 9.7 Наведення камери
+    local cam = Camera
+    local camPos = cam.CFrame.Position
+    local goal = CFrame.lookAt(camPos, targetPart.Position)
+
+    --// Формула незалежна від FPS
+    --// smooth = 0.05 → 95% руху за кадр (майже миттєво)
+    --// smooth = 0.5  → 50% руху за кадр (плавно)
+    --// smooth = 1    → 0% (не рухається)
+    local smooth = math.clamp(State.Smoothness, 0.01, 0.99)
+    local alpha = 1 - math.pow(smooth, dt * 60)
+    alpha = math.clamp(alpha, 0.05, 0.95)
+    cam.CFrame = cam.CFrame:Lerp(goal, alpha)
+
+    --// 9.8 DEBUG (раз на 2 секунди)
+    State.DebugTimer = State.DebugTimer + dt
+    if State.DebugTimer >= 2 then
+        State.DebugTimer = 0
+        local plr = State.CurrentTarget
+        print(string.format("[Aimbot DEBUG] Target: %s | Smooth: %.2f | FOV: %.0f | Alpha: %.2f",
+            plr and plr.Name or "none",
+            State.Smoothness,
+            State.Fov,
+            alpha
+        ))
+    end
+end)
+
+--// ---------- 10. ГОТОВО ----------
+print("[Aimbot] ✓ Bind встановлено: FotliAimbotV5")
+print("[Aimbot] === ГОТОВО ===")
+print("[Aimbot] F4 → Combat → Aimbot (Hold RMB) → ПКМ")
