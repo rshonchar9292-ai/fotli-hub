@@ -1,6 +1,5 @@
 --// ============================================================
---// Fotli Hub — Self-contained Loader
---// Не залежить від loader.lua на GitHub
+--// loader.lua — Fotli Hub Loader
 --// ============================================================
 
 if _G.FotliMenuLoaded then
@@ -9,12 +8,11 @@ if _G.FotliMenuLoaded then
 end
 _G.FotliMenuLoaded = true
 
---// Правильний юзернейм — 9292
+--// УВАГА: правильний юзернейм — 9292
 local BASE = "https://raw.githubusercontent.com/rshonchar9292-ai/fotli-hub/main/"
 
---// Універсальне завантаження модуля
 local function Load(path)
-    local url = BASE .. path .. "?t=" .. os.time()   -- обхід кешу GitHub
+    local url = BASE .. path .. "?t=" .. os.time()
     local ok, code = pcall(function()
         return game:HttpGet(url)
     end)
@@ -29,9 +27,8 @@ local function Load(path)
         return false
     end
 
-    --// Перевірка на 404
     if code:sub(1, 3) == "404" or code:find("^404:") then
-        warn("[FotliMenu] Файл не знайдено: " .. path)
+        warn("[FotliMenu] Файл не знайдено (" .. path .. ")")
         return false
     end
 
@@ -55,7 +52,7 @@ end
 print("[FotliMenu] Завантаження UI...")
 Load("ui.lua")
 
---// 2. Чекаємо, поки UI створить _G.ModMenu.Elements
+--// 2. Чекаємо UI
 local tries = 0
 while (not _G.ModMenu or not _G.ModMenu.Elements) and tries < 30 do
     task.wait(0.1)
@@ -69,11 +66,12 @@ end
 
 print("[FotliMenu] UI готовий, завантаження модулів...")
 
---// 3. Features
+--// 3. Features (логіка)
 Load("features/esp.lua")
-Load("features/silentaim.lua")
-Load("features/speed.lua")
-Load("features/fly.lua")
-Load("features/noclip.lua")
+Load("features/aimbot.lua")        -- ← Aimbot
+Load("features/silentaim.lua")     -- ← Silent Aim
+-- Load("features/speed.lua")      -- поки порожні, закоментовано
+-- Load("features/fly.lua")
+-- Load("features/noclip.lua")
 
-print("[FotliMenu] Готово! Меню запущено.")
+print("[FotliMenu] Готово!")
