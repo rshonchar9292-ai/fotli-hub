@@ -1,9 +1,8 @@
 --// ============================================================
---// ui.lua — Fotli Hub UI (вкладки зліва, F4 toggle)
---// Combat: Camera Aimbot + Silent Aim
+--// ui.lua — Fotli Hub UI (v2 with FOV/BunnyHop/AntiAim)
+--// Вкладки зліва, F4 toggle
 --// ============================================================
 
--- Захист від повторного завантаження
 if game:GetService("CoreGui"):FindFirstChild("ModMenuUI") then
     game:GetService("CoreGui"):FindFirstChild("ModMenuUI"):Destroy()
 end
@@ -14,7 +13,6 @@ local RunService       = game:GetService("RunService")
 local TweenService     = game:GetService("TweenService")
 local LocalPlayer      = Players.LocalPlayer
 
---// Палітра
 local COLORS = {
     Background    = Color3.fromRGB(15, 15, 22),
     BackgroundAlt = Color3.fromRGB(22, 22, 32),
@@ -29,14 +27,10 @@ local COLORS = {
     Danger        = Color3.fromRGB(240, 80, 100),
 }
 
---// Розмір вікна
 local WINDOW_W = 720
-local WINDOW_H = 480
+local WINDOW_H = 500
 local TABS_W   = 150
 
---// ------------------------------------------------------------
---// ScreenGui
---// ------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuUI"
 ScreenGui.ResetOnSpawn = false
@@ -45,9 +39,6 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.DisplayOrder = 999
 ScreenGui.Parent = game:GetService("CoreGui")
 
---// ------------------------------------------------------------
---// Main Frame — приховано до F4
---// ------------------------------------------------------------
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H)
@@ -69,9 +60,7 @@ MainStroke.Thickness = 1.5
 MainStroke.Transparency = 0.2
 MainStroke.Parent = MainFrame
 
---// ------------------------------------------------------------
 --// TitleBar
---// ------------------------------------------------------------
 local TitleBar = Instance.new("Frame")
 TitleBar.Name = "TitleBar"
 TitleBar.Size = UDim2.new(1, 0, 0, 42)
@@ -91,7 +80,6 @@ TitleBarFix.BorderSizePixel = 0
 TitleBarFix.ZIndex = 2
 TitleBarFix.Parent = TitleBar
 
--- Анімований градієнт
 local GradientHolder = Instance.new("Frame")
 GradientHolder.Size = UDim2.new(1, 0, 0, 2)
 GradientHolder.Position = UDim2.new(0, 0, 1, -2)
@@ -117,7 +105,6 @@ task.spawn(function()
     end
 end)
 
--- Логотип
 local LogoDot = Instance.new("Frame")
 LogoDot.Size = UDim2.new(0, 8, 0, 8)
 LogoDot.Position = UDim2.new(0, 16, 0.5, -4)
@@ -157,7 +144,6 @@ TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.ZIndex = 3
 TitleLabel.Parent = TitleBar
 
--- Minimize
 local MinimizeButton = Instance.new("TextButton")
 MinimizeButton.Size = UDim2.new(0, 26, 0, 26)
 MinimizeButton.Position = UDim2.new(1, -68, 0.5, -13)
@@ -182,7 +168,6 @@ MinimizeButton.MouseLeave:Connect(function()
     TweenService:Create(MinimizeButton, TweenInfo.new(0.15), {BackgroundColor3 = COLORS.Element}):Play()
 end)
 
--- Close (ховає, не руйнує)
 local CloseButton = Instance.new("TextButton")
 CloseButton.Size = UDim2.new(0, 26, 0, 26)
 CloseButton.Position = UDim2.new(1, -36, 0.5, -13)
@@ -207,9 +192,7 @@ CloseButton.MouseLeave:Connect(function()
     TweenService:Create(CloseButton, TweenInfo.new(0.15), {BackgroundColor3 = COLORS.Element}):Play()
 end)
 
---// ------------------------------------------------------------
---// TabsFrame — ЗЛІВА
---// ------------------------------------------------------------
+--// TabsFrame — зліва
 local TabsFrame = Instance.new("Frame")
 TabsFrame.Name = "TabsFrame"
 TabsFrame.Size = UDim2.new(0, TABS_W, 1, -58)
@@ -234,9 +217,7 @@ TabsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 TabsLayout.Padding = UDim.new(0, 8)
 TabsLayout.Parent = TabsFrame
 
---// ------------------------------------------------------------
---// ContentFrame — СПРАВА
---// ------------------------------------------------------------
+--// ContentFrame — справа
 local ContentFrame = Instance.new("ScrollingFrame")
 ContentFrame.Name = "ContentFrame"
 ContentFrame.Size = UDim2.new(1, -TABS_W - 36, 1, -58)
@@ -267,19 +248,11 @@ ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ContentLayout.Padding = UDim.new(0, 8)
 ContentLayout.Parent = ContentFrame
 
---// ------------------------------------------------------------
---// Сховище
---// ------------------------------------------------------------
-local Tabs      = {}
-local TabPages  = {}
-local ActiveTab = nil
+local Tabs, TabPages, ActiveTab = {}, {}, nil
 
---// ------------------------------------------------------------
---// CreateTab
---// ------------------------------------------------------------
 local function CreateTab(name)
     local TabButton = Instance.new("TextButton")
-    TabButton.Size = UDim2.new(1, 0, 0, 40)
+    TabButton.Size = UDim2.new(1, 0, 0, 38)
     TabButton.BackgroundColor3 = COLORS.Element
     TabButton.BorderSizePixel = 0
     TabButton.Text = "  " .. name
@@ -312,7 +285,6 @@ local function CreateTab(name)
     AccentBarCorner.Parent = AccentBar
 
     local Page = Instance.new("Frame")
-    Page.Name = name .. "Page"
     Page.Size = UDim2.new(1, 0, 1, 0)
     Page.BackgroundTransparency = 1
     Page.Visible = false
@@ -356,7 +328,7 @@ local function CreateTab(name)
             TextColor3 = COLORS.Text,
         }):Play()
         TweenService:Create(AccentBar, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
-            Size = UDim2.new(0, 3, 0, 28),
+            Size = UDim2.new(0, 3, 0, 26),
         }):Play()
         TweenService:Create(TabStroke, TweenInfo.new(0.2), {
             Color = COLORS.Accent,
@@ -364,22 +336,12 @@ local function CreateTab(name)
         }):Play()
 
         Page.Visible = true
-        for _, child in ipairs(Page:GetChildren()) do
-            if child:IsA("GuiObject") and not child:IsA("UIListLayout") then
-                child.BackgroundTransparency = 1
-                TweenService:Create(child, TweenInfo.new(0.25), {BackgroundTransparency = 0}):Play()
-            end
-        end
-
         ActiveTab = name
     end)
 
     return Page
 end
 
---// ------------------------------------------------------------
---// CreateToggle
---// ------------------------------------------------------------
 local function CreateToggle(parent, text, default, callback)
     local state = default or false
 
@@ -475,9 +437,6 @@ local function CreateToggle(parent, text, default, callback)
     }
 end
 
---// ------------------------------------------------------------
---// CreateSlider
---// ------------------------------------------------------------
 local function CreateSlider(parent, text, min, max, default, callback)
     local value = default or min
 
@@ -636,9 +595,6 @@ local function CreateSlider(parent, text, min, max, default, callback)
     }
 end
 
---// ------------------------------------------------------------
---// CreateSection
---// ------------------------------------------------------------
 local function CreateSection(parent, text)
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(1, 0, 0, 26)
@@ -652,22 +608,22 @@ local function CreateSection(parent, text)
     return Label
 end
 
---// ------------------------------------------------------------
---// Створення вкладок
---// ------------------------------------------------------------
+--// ============================================================
+--// СТВОРЕННЯ ВКЛАДОК
+--// ============================================================
 local CombatPage    = CreateTab("Combat")
 local VisualPage    = CreateTab("Visual")
 local MovementPage  = CreateTab("Movement")
+local RagePage      = CreateTab("Rage")
 local AnimationPage = CreateTab("Animation")
 
---// -------- Combat: Camera Aimbot --------
+--// -------- COMBAT --------
 CreateSection(CombatPage, "Camera Aimbot")
 
 local AimEnabled   = CreateToggle(CombatPage, "Aimbot (Hold RMB)", false, nil)
-local AimSmooth    = CreateSlider(CombatPage, "Aimbot Smoothness", 0.05, 1, 0.25, nil)
+local AimSmooth    = CreateSlider(CombatPage, "Aimbot Smoothness", 0.05, 1, 0.15, nil)
 local AimFovSlider = CreateSlider(CombatPage, "Aimbot FOV", 10, 500, 150, nil)
 
---// -------- Combat: Silent Aim --------
 CreateSection(CombatPage, "Silent Aim")
 
 local SilentEnabled   = CreateToggle(CombatPage, "Silent Aim",      false, nil)
@@ -675,14 +631,13 @@ local SilentShowFov   = CreateToggle(CombatPage, "Show Silent FOV", true,  nil)
 local SilentFovSlider = CreateSlider(CombatPage, "Silent FOV", 10, 500, 150, nil)
 local SilentHitChance = CreateSlider(CombatPage, "Hit Chance (%)", 0, 100, 100, nil)
 
---// -------- Combat: Shared --------
 CreateSection(CombatPage, "Target")
 
 local AimTargetPart = CreateToggle(CombatPage, "Aim at Head", true, nil)
 local AimTeamCheck  = CreateToggle(CombatPage, "Team Check", true, nil)
 local AimWallCheck  = CreateToggle(CombatPage, "Wall Check", false, nil)
 
---// -------- Visual (ESP) --------
+--// -------- VISUAL (ESP) --------
 CreateSection(VisualPage, "Player ESP")
 
 local EspEnabled   = CreateToggle(VisualPage, "Enable ESP",        false, nil)
@@ -696,17 +651,39 @@ CreateSection(VisualPage, "Settings")
 local EspMaxDist   = CreateSlider(VisualPage, "Max Distance", 50, 5000, 1500, nil)
 local EspFillAlpha = CreateSlider(VisualPage, "Fill Alpha",   0,  1,    0.35, nil)
 
---// -------- Movement --------
+--// -------- MOVEMENT --------
 CreateSection(MovementPage, "Movement")
 
 local SpeedSlider  = CreateSlider(MovementPage, "Speed", 16, 500, 16, nil)
 local FlyToggle    = CreateToggle(MovementPage, "Fly",    false, nil)
 local NoclipToggle = CreateToggle(MovementPage, "Noclip", false, nil)
 
---// -------- Animation --------
+CreateSection(MovementPage, "Jump")
+
+local BunnyHopToggle   = CreateToggle(MovementPage, "Bunny Hop", true, nil)
+local AutoJumpToggle   = CreateToggle(MovementPage, "Auto Jump (Hold Space)", false, nil)
+local JumpPowerSlider  = CreateSlider(MovementPage, "Jump Power", 50, 300, 50, nil)
+
+--// -------- RAGE (Anti-Aim + FOV) --------
+CreateSection(RagePage, "Anti-Aim (CS-style)")
+
+local AntiAimEnabled  = CreateToggle(RagePage, "Anti-Aim", false, nil)
+local AntiAimMode     = CreateToggle(RagePage, "Use: Spin (off = Jitter)", true, nil)
+local AntiAimSpeed    = CreateSlider(RagePage, "Spin Speed", 1, 60, 18, nil)
+local AntiAimJitter   = CreateSlider(RagePage, "Jitter Angle", 10, 180, 90, nil)
+
+CreateSection(RagePage, "Camera FOV")
+
+local FovEnabled = CreateToggle(RagePage, "FOV Changer", false, nil)
+local FovSlider  = CreateSlider(RagePage, "FOV Value", 20, 120, 90, nil)
+
+--// -------- ANIMATION --------
 CreateSection(AnimationPage, "Animation")
 
---// Активуємо Combat за замовчуванням
+local AnimSpeedEnabled = CreateToggle(AnimationPage, "Animation Speed", false, nil)
+local AnimSpeedSlider  = CreateSlider(AnimationPage, "Speed Multiplier", 0.1, 5, 1, nil)
+
+--// Активуємо Combat
 for tabName, data in pairs(Tabs) do
     data.Button.BackgroundColor3 = COLORS.Element
     data.Button.TextColor3 = COLORS.TextDim
@@ -714,15 +691,13 @@ for tabName, data in pairs(Tabs) do
 end
 Tabs["Combat"].Button.BackgroundColor3 = COLORS.ElementHover
 Tabs["Combat"].Button.TextColor3 = COLORS.Text
-Tabs["Combat"].AccentBar.Size = UDim2.new(0, 3, 0, 28)
+Tabs["Combat"].AccentBar.Size = UDim2.new(0, 3, 0, 26)
 Tabs["Combat"].Stroke.Color = COLORS.Accent
 Tabs["Combat"].Stroke.Transparency = 0
 TabPages["Combat"].Visible = true
 ActiveTab = "Combat"
 
---// ------------------------------------------------------------
 --// Drag
---// ------------------------------------------------------------
 local dragging, dragStart, startPos = false, nil, nil
 
 TitleBar.InputBegan:Connect(function(input)
@@ -752,9 +727,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
---// ------------------------------------------------------------
---// Мінімізація
---// ------------------------------------------------------------
+--// Minimize
 local minimized = false
 MinimizeButton.MouseButton1Click:Connect(function()
     minimized = not minimized
@@ -775,16 +748,10 @@ MinimizeButton.MouseButton1Click:Connect(function()
     end
 end)
 
---// ------------------------------------------------------------
---// Close — ховає (F4 знову відкриє)
---// ------------------------------------------------------------
 CloseButton.MouseButton1Click:Connect(function()
     MainFrame.Visible = false
 end)
 
---// ------------------------------------------------------------
---// F4 — показати/сховати
---// ------------------------------------------------------------
 local function ToggleMenu()
     if MainFrame.Visible then
         TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
@@ -809,9 +776,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
---// ------------------------------------------------------------
---// Експорт
---// ------------------------------------------------------------
+--// ============================================================
+--// ЕКСПОРТ ЕЛЕМЕНТІВ
+--// ============================================================
 _G.ModMenu = _G.ModMenu or {}
 _G.ModMenu.ScreenGui = ScreenGui
 _G.ModMenu.MainFrame = MainFrame
@@ -819,23 +786,19 @@ _G.ModMenu.Tabs = Tabs
 _G.ModMenu.TabPages = TabPages
 
 _G.ModMenu.Elements = {
-    -- Combat: Aimbot
+    -- Combat
     AimEnabled    = AimEnabled,
     AimSmooth     = AimSmooth,
     AimFovSlider  = AimFovSlider,
-
-    -- Combat: Silent Aim
-    SilentEnabled   = SilentEnabled,
-    SilentShowFov   = SilentShowFov,
+    SilentEnabled = SilentEnabled,
+    SilentShowFov = SilentShowFov,
     SilentFovSlider = SilentFovSlider,
     SilentHitChance = SilentHitChance,
-
-    -- Combat: Shared
     AimTargetPart = AimTargetPart,
     AimTeamCheck  = AimTeamCheck,
     AimWallCheck  = AimWallCheck,
 
-    -- Visual / ESP
+    -- Visual
     EspEnabled   = EspEnabled,
     EspFill      = EspFill,
     EspOutline   = EspOutline,
@@ -845,9 +808,24 @@ _G.ModMenu.Elements = {
     EspFillAlpha = EspFillAlpha,
 
     -- Movement
-    SpeedSlider  = SpeedSlider,
-    FlyToggle    = FlyToggle,
-    NoclipToggle = NoclipToggle,
+    SpeedSlider    = SpeedSlider,
+    FlyToggle      = FlyToggle,
+    NoclipToggle   = NoclipToggle,
+    BunnyHopToggle = BunnyHopToggle,
+    AutoJumpToggle = AutoJumpToggle,
+    JumpPowerSlider = JumpPowerSlider,
+
+    -- Rage
+    AntiAimEnabled = AntiAimEnabled,
+    AntiAimMode    = AntiAimMode,
+    AntiAimSpeed   = AntiAimSpeed,
+    AntiAimJitter  = AntiAimJitter,
+    FovEnabled     = FovEnabled,
+    FovSlider      = FovSlider,
+
+    -- Animation
+    AnimSpeedEnabled = AnimSpeedEnabled,
+    AnimSpeedSlider  = AnimSpeedSlider,
 }
 
-print("[ModMenu] UI завантажено. Натисни F4 щоб відкрити меню.")
+print("[ModMenu] UI v2 завантажено (FOV/BunnyHop/AntiAim). Натисни F4.")
